@@ -1,16 +1,18 @@
 class Colors:
-    bgColor = (55, 56, 59)
-    forText = (232, 152, 118)
+    ghostColor = (255, 0, 0)
+    bgColor = (28, 28, 28)
+    forText = (255, 255, 255)
     black = (0, 0, 0)
     white = (255, 255, 255)
-    gridColor = (252, 231, 227)
-    iBlock = (247, 166, 227)
-    oBlock = (180, 183, 240)
-    tBlock = (240, 205, 96)
-    lBlock = (173, 216, 230)
-    jBlock = (247, 139, 184)
-    sBlock = (186, 168, 214)
-    zBlock = (158, 255, 210)
+    gridColor = (46, 46, 46)
+
+    lBlock = (160, 160, 160)
+    jBlock = (192, 192, 192)
+    iBlock = (107, 107, 107)
+    oBlock = (129, 129, 129)
+    sBlock = (151, 151, 151)
+    tBlock = (173, 173, 173)
+    zBlock = (195, 195, 195)
 
     @staticmethod
     def get_cell_colors():

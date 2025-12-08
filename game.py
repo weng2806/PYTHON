@@ -1,6 +1,8 @@
 import random, pygame
 from grid import Grid
+from colors import Colors
 from blocks import *
+
 
 
 class Game:
@@ -17,12 +19,14 @@ class Game:
         self.rotate_sound = pygame.mixer.Sound("Sounds/rotate.ogg")
         self.clear_sound = pygame.mixer.Sound("Sounds/clear.ogg")
 
+        pygame.mixer.music.load("Sounds/starboy.ogg")
+        pygame.mixer.music.play(10) # loop 10 times
+        
         # lock delay: small grace period before a colliding piece locks (ms)
         self.lock_delay = 120
         self.lock_timer = 0
 
-        pygame.mixer.music.load("Sounds/starboy.ogg")
-        pygame.mixer.music.play(3) # loop 3 times
+      
 
     # --------------------------------------------------------
     # NES SCORING TABLE
@@ -160,15 +164,21 @@ class Game:
 
     def draw(self, screen):
         self.grid.draw(screen)
+
+    # --- Draw Ghost FIRST ---
+        ghost = self.get_ghost_piece()
+        self.draw_ghost(screen, ghost, 11, 11)
+
+    # --- Then draw actual falling piece ---
         self.current_block.draw(screen, 11, 11)
 
-        # Next-piece preview alignment
+    # Next piece preview
         if self.next_block.id == 3:
-            self.next_block.draw(screen, 255, 290)
+            self.next_block.draw(screen, 255, 400)
         elif self.next_block.id == 4:
-            self.next_block.draw(screen, 255, 280)
+            self.next_block.draw(screen, 255, 390)
         else:
-            self.next_block.draw(screen, 270, 270)
+            self.next_block.draw(screen, 270, 390)
 
     def hard_drop(self):
         """
@@ -186,3 +196,34 @@ class Game:
                 return rows, move_points
             # piece moved down one cell
             move_points += 1 # isa lang bakit sugapa ah eme
+
+    def draw_ghost(self, screen, ghost, offset_x, offset_y):
+        # Use the same exact color as the real block
+        base_color = ghost.colors[ghost.id]
+
+    # Create a transparent surface for ghost cells
+        alpha_surface = pygame.Surface((ghost.cell_size, ghost.cell_size), pygame.SRCALPHA)
+        alpha_surface.fill((*base_color, 100))  # 100 = opacity (0–255)
+
+        for cell in ghost.get_cell_positions():
+            rect = pygame.Rect(
+                offset_x + cell.column * ghost.cell_size,
+                offset_y + cell.row * ghost.cell_size,
+                ghost.cell_size - 1,
+                ghost.cell_size - 1
+            )
+
+        # Draw filled transparent block
+            screen.blit(alpha_surface, rect.topleft)
+
+        # Optional: draw faint outline using same color
+            pygame.draw.rect(screen, base_color, rect, 2)
+
+    def get_ghost_piece(self):
+        ghost = self.current_block.clone()
+
+    # Move down until next step would collide
+        while ghost.valid_move(1, 0, self.grid):
+            ghost.row_offset += 1
+
+        return ghost

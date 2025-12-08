@@ -40,3 +40,29 @@ class Block:
 			tile_rect = pygame.Rect(offset_x + tile.column * self.cell_size, 
 				offset_y + tile.row * self.cell_size, self.cell_size -1, self.cell_size -1)
 			pygame.draw.rect(screen, self.colors[self.id], tile_rect)
+
+	def clone (self):
+		copy = type(self)()   # Create a new instance of the same block class
+		copy.cells = self.cells
+		copy.cell_size = self.cell_size
+		copy.row_offset = self.row_offset
+		copy.column_offset = self.column_offset
+		copy.rotation_state = self.rotation_state
+		return copy
+	
+	def valid_move(self, delta_row, delta_column, grid):
+		for cell in self.get_cell_positions():
+			new_row = cell.row + delta_row
+			new_col = cell.column + delta_column
+
+			if not grid.is_inside(new_row, new_col):
+				return False
+			if not grid.is_empty(new_row, new_col):
+				return False
+		return True
+
+
+
+
+   
+        	

@@ -15,7 +15,7 @@ class Grid:
                 print(self.grid[row][column], end = " ")
             print()
 
-    def is_inside(self, row, column):
+    def is_inside(self, row, column): 
         if row >= 0 and row < self.num_rows and column >= 0 and column < self.num_cols:
             return True
         return False
