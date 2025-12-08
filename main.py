@@ -8,12 +8,12 @@
     level display not increasing properly based on lines cleared 
     pag sa dulo yung block, ayaw magrotate
     IN GAME OVER, the last block overwrites the previous block below it  
-    in game over, add a restart prompt  
+    in game over, add a restart prompt (press any key to restart)
 
 try add on effects ***
-    ghost piece para makita kung saan lalapag yung block ---> okay na
     hold piece tryy ---> hindi pa okay
-
+    hold piece display
+    sound effects (rotate, line clear, level up, game over)
 """
 
 
