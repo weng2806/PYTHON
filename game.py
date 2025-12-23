@@ -4,7 +4,6 @@ from colors import Colors
 from blocks import *
 
 
-
 class Game:
     def __init__(self):
         self.speed = 1.0                  # fall speed multiplier (not used directly)
@@ -19,14 +18,13 @@ class Game:
         self.rotate_sound = pygame.mixer.Sound("Sounds/rotate.ogg")
         self.clear_sound = pygame.mixer.Sound("Sounds/clear.ogg")
 
-        pygame.mixer.music.load("Sounds/starboy.ogg")
-        pygame.mixer.music.play(10) # loop 10 times
-        
+        # HOLD PIECE
+        self.hold_block = None            # currently held block
+        self.can_hold = True              # prevents multiple holds before locking
+
         # lock delay: small grace period before a colliding piece locks (ms)
         self.lock_delay = 120
         self.lock_timer = 0
-
-      
 
     # --------------------------------------------------------
     # NES SCORING TABLE
@@ -35,7 +33,6 @@ class Game:
     # 3 lines = 300 × (level + 1)
     # 4 lines = 1200 × (level + 1)
     # --------------------------------------------------------
-
     def update_score(self, lines_cleared, move_down_points):
         if lines_cleared == 1:
             self.score += 40 * (self.level + 1)
@@ -60,6 +57,7 @@ class Game:
         self.blocks.remove(block)
         return block
 
+    # ---------- MOVEMENT ----------
     def move_left(self):
         self.current_block.move(0, -1)
         if not self.block_inside() or not self.block_fits():
@@ -72,20 +70,15 @@ class Game:
 
     def move_down(self):
         """
-        called sa auto-fall or soft-drop.
-        
-           returns: True  -> piece is still active (moved or in lock delay)
-           returns: False -> piece was locked (and spawn/clear happened)
-        
-            difference: if locking happens, lock_block() is executed and it updates
-            self.total_lines and self.level.
+        Called sa auto-fall or soft-drop.
+        Returns: True -> piece is still active (moved or in lock delay)
+                 False -> piece was locked (and spawn/clear happened)
         """
         self.current_block.move(1, 0)
 
         if not self.block_inside() or not self.block_fits():
             # collision: move back up
             self.current_block.move(-1, 0)
-
             now = pygame.time.get_ticks()
             if self.lock_timer == 0:
                 self.lock_timer = now
@@ -95,65 +88,61 @@ class Game:
                 self.lock_timer = 0
                 self.lock_block()
                 return False      # locked
-            # still in lock delay window; treat as "active" (not locked yet)
+            # still in lock delay window; treat as "active"
             return True
         else:
             # successful move down — reset lock timer
             self.lock_timer = 0
             return True
 
+    # ---------- LOCK PIECE ----------
     def lock_block(self):
-        # nilolock yung piece sa grid, clears rows, spawns next piece. nirereturn yung number of cleared rows.
-        
+        # lock piece into the grid, clears rows, spawns next piece
         tiles = self.current_block.get_cell_positions()
         for position in tiles:
             self.grid.grid[position.row][position.column] = self.current_block.id
 
-        # clear rows first (count how many)
+        # clear rows
         rows_cleared = self.grid.clear_full_rows()
-
         if rows_cleared > 0:
             self.clear_sound.play()
-            # update totals & score
             self.total_lines += rows_cleared
             self.update_score(rows_cleared, 0)
             self.update_level()
 
-        # check game over with the current locked grid (if next block doesn't fit in spawn pos)
-        # spawn next piece only if game is not over
+        # spawn next piece
         self.current_block = self.next_block
         self.next_block = self.get_random_block()
 
+        # check game over
         if not self.block_fits():
             self.game_over = True
 
+        # allow hold again
+        self.can_hold = True
         return rows_cleared
 
+    # ---------- RESET ----------
     def reset(self):
         self.grid.reset()
         self.blocks = [IBlock(), JBlock(), LBlock(), OBlock(), SBlock(), TBlock(), ZBlock()]
         self.current_block = self.get_random_block()
         self.next_block = self.get_random_block()
-
         self.score = 0
         self.total_lines = 0
         self.level = 0
         self.game_over = False
         self.lock_timer = 0
+        self.hold_block = None
+        self.can_hold = True
 
+    # ---------- COLLISION ----------
     def block_fits(self):
         tiles = self.current_block.get_cell_positions()
         for tile in tiles:
             if not self.grid.is_empty(tile.row, tile.column):
                 return False
         return True
-
-    def rotate(self):
-        self.current_block.rotate()
-        if not self.block_inside() or not self.block_fits():
-            self.current_block.undo_rotation()
-        else:
-            self.rotate_sound.play()
 
     def block_inside(self):
         tiles = self.current_block.get_cell_positions()
@@ -162,29 +151,20 @@ class Game:
                 return False
         return True
 
-    def draw(self, screen):
-        self.grid.draw(screen)
-
-    # --- Draw Ghost FIRST ---
-        ghost = self.get_ghost_piece()
-        self.draw_ghost(screen, ghost, 11, 11)
-
-    # --- Then draw actual falling piece ---
-        self.current_block.draw(screen, 11, 11)
-
-    # Next piece preview
-        if self.next_block.id == 3:
-            self.next_block.draw(screen, 255, 400)
-        elif self.next_block.id == 4:
-            self.next_block.draw(screen, 255, 390)
+    # ---------- ROTATION ----------
+    def rotate(self):
+        self.current_block.rotate()
+        if not self.block_inside() or not self.block_fits():
+            self.current_block.undo_rotation()
         else:
-            self.next_block.draw(screen, 270, 390)
+            self.rotate_sound.play()
 
+    # ---------- HARD DROP ----------
     def hard_drop(self):
         """
-        agad maglolock (bypass lock delay).
-        return tuple: (rows_cleared, move_down_points)
-        move_down_points is number of soft/hard-drop points earned during the hard drop.
+        Agad mag-lock (bypass lock delay).
+        Return tuple: (rows_cleared, move_down_points)
+        move_down_points = number of soft/hard-drop points earned during hard drop
         """
         move_points = 0
         while True:
@@ -194,16 +174,20 @@ class Game:
                 self.current_block.move(-1, 0)
                 rows = self.lock_block()
                 return rows, move_points
-            # piece moved down one cell
-            move_points += 1 # isa lang bakit sugapa ah eme
+            move_points += 1
+
+    # ---------- GHOST PIECE ----------
+    def get_ghost_piece(self):
+        ghost = self.current_block.clone()
+        # move down until collision
+        while ghost.valid_move(1, 0, self.grid):
+            ghost.row_offset += 1
+        return ghost
 
     def draw_ghost(self, screen, ghost, offset_x, offset_y):
-        # Use the same exact color as the real block
         base_color = ghost.colors[ghost.id]
-
-    # Create a transparent surface for ghost cells
         alpha_surface = pygame.Surface((ghost.cell_size, ghost.cell_size), pygame.SRCALPHA)
-        alpha_surface.fill((*base_color, 100))  # 100 = opacity (0–255)
+        alpha_surface.fill((*base_color, 100))  # transparency
 
         for cell in ghost.get_cell_positions():
             rect = pygame.Rect(
@@ -212,18 +196,48 @@ class Game:
                 ghost.cell_size - 1,
                 ghost.cell_size - 1
             )
-
-        # Draw filled transparent block
             screen.blit(alpha_surface, rect.topleft)
-
-        # Optional: draw faint outline using same color
             pygame.draw.rect(screen, base_color, rect, 2)
 
-    def get_ghost_piece(self):
-        ghost = self.current_block.clone()
+    # ---------- DRAWING ----------
+    def draw(self, screen):
+        self.grid.draw(screen)
+        ghost = self.get_ghost_piece()
+        self.draw_ghost(screen, ghost, 11, 11)
+        self.current_block.draw(screen, 11, 11)
 
-    # Move down until next step would collide
-        while ghost.valid_move(1, 0, self.grid):
-            ghost.row_offset += 1
+        # next block preview
+        if self.next_block.id == 3:
+            self.next_block.draw(screen, 255, 400)
+        elif self.next_block.id == 4:
+            self.next_block.draw(screen, 255, 390)
+        else:
+            self.next_block.draw(screen, 270, 390)
 
-        return ghost
+    # ---------- HOLD ----------
+    def hold(self):
+        if not self.can_hold:
+            return
+
+        if self.hold_block is None:
+            self.hold_block = self.current_block
+            self.current_block = self.get_random_block()
+        else:
+            self.hold_block, self.current_block = self.current_block, self.hold_block
+            self.current_block.row_offset = 0
+            self.current_block.column_offset = 4  # spawn position
+
+        self.can_hold = False
+
+    def draw_hold_piece(self, screen, x, y):
+        if self.hold_block is None:
+            return
+        for cell in self.hold_block.get_cell_positions():
+            rect = pygame.Rect(
+                x + cell.column * self.hold_block.cell_size,
+                y + cell.row * self.hold_block.cell_size,
+                self.hold_block.cell_size - 1,
+                self.hold_block.cell_size - 1
+            )
+            pygame.draw.rect(screen, self.hold_block.colors[self.hold_block.id], rect)
+            pygame.draw.rect(screen, (0, 0, 0), rect, 1)

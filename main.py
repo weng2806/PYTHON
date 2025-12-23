@@ -1,88 +1,68 @@
 """ BUGS ***
- IN GAME OVER, the last block overwrites the previous block below it  
- the block is not speeding as level increases, my level is based on total lines cleared 
- 
-270, 390
- new updates/ bugs ***
-    OPTIONAL ---> SCORE FOR SOFT DROP -> fixed (1 point per cell)
-    level display not increasing properly based on lines cleared 
-    pag sa dulo yung block, ayaw magrotate
-    IN GAME OVER, the last block overwrites the previous block below it  
-    in game over, add a restart prompt (press any key to restart)
+ IN GAME OVER, the last block (located at the uppermost) overwrites the previous block below it  
+pag sa dulo yung block, ayaw magrotate
 
 try add on effects ***
+    start menu, 
     hold piece tryy ---> hindi pa okay
     hold piece display
     sound effects (rotate, line clear, level up, game over)
 """
-
-
 import pygame, sys
 from game import Game
 from colors import Colors
 
-pygame.init() 
+pygame.init()
 
-#icon
-newIcon = pygame.image.load('Assets/tetrisLogoo.png', )
-pygame.display.set_icon(newIcon)
+# ------------------ WINDOW ------------------
+WIDTH, HEIGHT = 500, 620
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Tetris")
+clock = pygame.time.Clock()
 
-#image
+# ------------------ ASSETS ------------------
+icon = pygame.image.load("Assets/tetrisLogoo.png")
+pygame.display.set_icon(icon)
+
 tetrisImage = pygame.image.load("Assets/tetrisLogoo.png")
 tetrisImage = pygame.transform.scale(tetrisImage, (180, 100))
 
-#fonts
-title_font = pygame.font.Font(None, 30) 
-big_font = pygame.font.Font(None, 50) 
+fullTetris = pygame.image.load("Assets/fullTetris.png")
+fullTetris = pygame.transform.scale(fullTetris, (520, 620))
 
+# ------------------ FONTS ------------------
+title_font = pygame.font.Font(None, 30)
+big_font = pygame.font.Font(None, 50)
+menu_font = pygame.font.Font(None, 40)
+
+# ------------------ UI ------------------
 score_surface = title_font.render("Score", True, Colors.forText)
-hold_surface = title_font.render("Hold", True, Colors.forText)
+level_surface = title_font.render("Level", True, Colors.forText)
 next_surface = title_font.render("Next", True, Colors.forText)
-level_surface = title_font.render("Level", True, Colors.forText)  
-
+hold_surface = title_font.render("Hold", True, Colors.forText)
 game_over_surface = title_font.render("GAME OVER", True, Colors.forText)
 
 score_rect = pygame.Rect(395, 560, 100, 50)
 level_rect = pygame.Rect(320, 560, 50, 50)
-
 next_rect = pygame.Rect(320, 350, 170, 140)
 hold_rect = pygame.Rect(320, 150, 170, 140)
 
-
-
-screen = pygame.display.set_mode((500, 620))
-pygame.display.set_caption("tetris.")
-
-clock = pygame.time.Clock()
+# ------------------ GAME ------------------
 game = Game()
 
-# nes based speed table, recommended ng google (milliseconds)
+# NES gravity table (milliseconds per cell)
 NES_SPEED = [
     800, 710, 630, 550, 470, 380, 300, 220, 130, 100,
     90, 80, 70, 60, 50, 50, 50, 50, 50, 50
 ]
 
-# track totals for display/speed sync in main loop
-total_lines_cleared = 0
-level = 0
+def get_gravity_delay():
+    return NES_SPEED[min(game.level, len(NES_SPEED)-1)]
 
-GAME_UPDATE = pygame.USEREVENT
-pygame.time.set_timer(GAME_UPDATE, NES_SPEED[level])
+# ------------------ GRAVITY ------------------
+gravity_timer = 0
 
-def update_fall_speed():
-        # Update speed based on current level.
-    speed = NES_SPEED[min(level, len(NES_SPEED)-1)]
-    pygame.time.set_timer(GAME_UPDATE, speed)
-
-def get_ghost_piece(block, grid):
-    ghost = block.clone()
-
-    while ghost.valid_move(1, 0, grid):
-        ghost.move(1, 0)
-
-    return ghost
-
-# ---- COOLDOWNS ----
+# ------------------ INPUT COOLDOWNS ------------------
 move_delay = 120
 rotate_delay = 170
 hard_drop_delay = 200
@@ -91,132 +71,123 @@ last_move_time = 0
 last_rotate_time = 0
 last_hard_drop_time = 0
 
-# ---- 3 SECOND START COUNTDOWN ----
-start_time = pygame.time.get_ticks()
-COUNTDOWN_DURATION = 3000  # 3 seconds
+# ------------------ START COUNTDOWN ------------------
+COUNTDOWN_DURATION = 3000
+start_time = None  # will be set after pressing Start
 
-def countdown_active():
-    now = pygame.time.get_ticks()
-    return (now - start_time) < COUNTDOWN_DURATION
+# ------------------ START MENU ------------------
+def start_menu():
+    start_button = pygame.Rect(50, 100, 180, 50)
+    exit_button = pygame.Rect(270, 100, 180, 50)
 
-
-def draw_countdown_overlay():
-    """Draw the countdown number over the current game state."""
-    now = pygame.time.get_ticks()
-    remaining = 3 - ((now - start_time) // 1000)
-    if remaining > 0:
+    while True:
         screen.fill(Colors.bgColor)
+        screen.blit(fullTetris, (-10,0))
 
-        score_value_surface = title_font.render(str(game.score), True, Colors.forText)
-        level_value_surface = title_font.render(str(level), True, Colors.forText)
+        # Buttons
+        pygame.draw.rect(screen, Colors.gridColor, start_button)
+        pygame.draw.rect(screen, Colors.gridColor, exit_button)
 
-        screen.blit(hold_surface, (385, 120))
-        screen.blit(next_surface, (385, 320))
+        start_text = menu_font.render("Start Game", True, Colors.forText)
+        exit_text = menu_font.render("Exit", True, Colors.forText)
 
-        screen.blit(tetrisImage, (317, 10))
-        screen.blit(score_surface, (415, 535))
-        screen.blit(level_surface, (320, 535))
-
-        pygame.draw.rect(screen, Colors.gridColor, score_rect, 0, 10)
-        pygame.draw.rect(screen, Colors.gridColor, next_rect, 0, 10)
-        pygame.draw.rect(screen, Colors.gridColor, hold_rect, 0, 10)
-        pygame.draw.rect(screen, Colors.gridColor, level_rect, 0, 10)
-
-        screen.blit(score_value_surface, score_value_surface.get_rect(center=score_rect.center))
-        screen.blit(level_value_surface, level_value_surface.get_rect(center=level_rect.center))
-
-        game.draw(screen)
-
-        number = big_font.render(str(remaining), True, Colors.forText)
-        rect = number.get_rect(center=(160, 310))
-        screen.blit(number, rect)
+        screen.blit(start_text, start_text.get_rect(center=start_button.center))
+        screen.blit(exit_text, exit_text.get_rect(center=exit_button.center))
 
         pygame.display.update()
-        return True
-    return False
 
-
-while True:
-    # ------------------ COUNTDOWN ------------------
-    if countdown_active():
-        draw_countdown_overlay()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        clock.tick(60)
-        continue
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if start_button.collidepoint(event.pos):
+                    return "start"
+                if exit_button.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
 
-    # ------------------ NORMAL GAME LOGIC ------------------
-    keys = pygame.key.get_pressed()
+# ------------------ COUNTDOWN FUNCTION ------------------
+def countdown_active():
+    if start_time is None:
+        return False
+    return pygame.time.get_ticks() - start_time < COUNTDOWN_DURATION
+
+# ------------------ DRAW HOLD PIECE CENTERED ------------------
+def draw_hold_piece(screen, block, rect):
+    if block is None:
+        return
+    # create a small surface for the hold piece
+    hold_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+    hold_surf.fill((0,0,0,0))
+    # clone block for drawing
+    temp_block = block.clone()
+    # compute min/max of block cells
+    positions = temp_block.get_cell_positions()
+    min_col = min(c.column for c in positions)
+    max_col = max(c.column for c in positions)
+    min_row = min(c.row for c in positions)
+    max_row = max(c.row for c in positions)
+    block_width = (max_col - min_col +1) * temp_block.cell_size
+    block_height = (max_row - min_row +1) * temp_block.cell_size
+    # center offsets
+    offset_x = (rect.width - block_width)//2 - min_col * temp_block.cell_size
+    offset_y = (rect.height - block_height)//2 - min_row * temp_block.cell_size
+    temp_block.draw(hold_surf, offset_x, offset_y)
+    screen.blit(hold_surf, rect.topleft)
+
+# ------------------ MAIN LOOP ------------------
+menu_choice = start_menu()
+if menu_choice == "start":
+    start_time = pygame.time.get_ticks()  # begin countdown
+
+while True:
+    dt = clock.tick(60)
+    gravity_timer += dt
     now = pygame.time.get_ticks()
+    keys = pygame.key.get_pressed()
+    countdown = countdown_active()
 
+    # ---------- EVENTS ----------
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
-        # ---------- SINGLE TAP INPUT ----------
-        if event.type == pygame.KEYDOWN:
+        # ONLY ALLOW INPUT IF NOT COUNTDOWN
+        if event.type == pygame.KEYDOWN and not countdown:
 
             if game.game_over:
-                game.game_over = False
                 game.reset()
-                total_lines_cleared = 0
-                level = 0
-                update_fall_speed()
+                gravity_timer = 0
                 start_time = pygame.time.get_ticks()
                 continue
 
-            if not game.game_over:
+            if event.key in (pygame.K_LEFT, pygame.K_a):
+                game.move_left()
+                last_move_time = now
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                game.move_right()
+                last_move_time = now
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                game.move_down()
+                game.update_score(0, 1)
+                last_move_time = now
+            elif event.key in (pygame.K_UP, pygame.K_w):
+                if now - last_rotate_time > rotate_delay:
+                    game.rotate()
+                    last_rotate_time = now
+            elif event.key == pygame.K_SPACE:
+                if now - last_hard_drop_time > hard_drop_delay:
+                    rows, points = game.hard_drop()
+                    game.update_score(0, points)
+                    gravity_timer = 0
+                    last_hard_drop_time = now
+            elif event.key == pygame.K_LSHIFT or event.key == pygame.K_c:
+                game.hold()
 
-                if event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    game.move_left()
-                    last_move_time = now
-                if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    game.move_right()
-                    last_move_time = now
-                if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                    moved = game.move_down()
-                    # soft drop gives 1 point per cell moved; only award if it actually moved
-                    # move_down returns True both when moved and while in lock-delay; this is fine for soft-drop scoring
-                    game.update_score(0, 1)
-                    last_move_time = now
-
-                if event.key == pygame.K_UP or event.key == pygame.K_w:
-                    if now - last_rotate_time > rotate_delay:
-                        game.rotate()
-                        last_rotate_time = now
-
-                if event.key == pygame.K_SPACE:
-                    # hard drop, lock agad
-                    if now - last_hard_drop_time > hard_drop_delay:
-                        rows, points = game.hard_drop()
-                        # score the points and (rows) nasa lock_block under ng update_score for cleared lines
-                        # ang atake, hard drop, points is 1 point per cell dropped
-                        game.update_score(0, points)
-                        last_hard_drop_time = now
-
-        # AUTO FALL
-        if event.type == GAME_UPDATE and not game.game_over:
-            before_score = game.score
-            before_total_lines = game.total_lines
-
-            moved = game.move_down()
-
-            # if move_down returned False -> the piece actually locked this tick
-            if not moved:
-                # game.total_lines has been updated inside lock_block()
-                if game.total_lines != before_total_lines:
-                    total_lines_cleared = game.total_lines
-                    level = game.level
-                    update_fall_speed()
-                else:
-                    # still update level fallback
-                    level = game.level
-
-    # ---------- LONG PRESS INPUT ----------
-    if not game.game_over:
+    # ---------- LONG PRESS ----------
+    if not countdown and not game.game_over:
         if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and now - last_move_time > move_delay:
             game.move_left()
             last_move_time = now
@@ -227,38 +198,52 @@ while True:
             game.move_down()
             game.update_score(0, 1)
             last_move_time = now
-        if (keys[pygame.K_UP] or keys[pygame.K_w]) and now - last_rotate_time > rotate_delay:
-            game.rotate()
-            last_rotate_time = now
 
-    # ---------- DRAWING ----------
-    score_value_surface = title_font.render(str(game.score), True, Colors.forText)
-    level_value_surface = title_font.render(str(level), True, Colors.forText)
+    # ---------- GRAVITY ----------
+    if not countdown and not game.game_over and gravity_timer >= get_gravity_delay():
+        gravity_timer = 0
+        game.move_down()
 
+    # ---------- DRAW UI ----------
     screen.fill(Colors.bgColor)
+
+    # Score & Level
+    score_value = title_font.render(str(game.score), True, Colors.forText)
+    level_value = title_font.render(str(game.level), True, Colors.forText)
+
     screen.blit(tetrisImage, (317, 10))
     screen.blit(score_surface, (415, 535))
+    screen.blit(level_surface, (320, 535))
     screen.blit(next_surface, (385, 320))
     screen.blit(hold_surface, (385, 120))
-    screen.blit(level_surface, (320, 535))
 
-
-    if game.game_over:
-        screen.blit(game_over_surface, (323, 430))
-        
     pygame.draw.rect(screen, Colors.gridColor, score_rect, 0, 10)
+    pygame.draw.rect(screen, Colors.gridColor, level_rect, 0, 10)
     pygame.draw.rect(screen, Colors.gridColor, next_rect, 0, 10)
     pygame.draw.rect(screen, Colors.gridColor, hold_rect, 0, 10)
-    pygame.draw.rect(screen, Colors.gridColor, level_rect, 0, 10)
 
-    screen.blit(score_value_surface, score_value_surface.get_rect(center=score_rect.center))
-    screen.blit(level_value_surface, level_value_surface.get_rect(center=level_rect.center))
+    screen.blit(score_value, score_value.get_rect(center=score_rect.center))
+    screen.blit(level_value, level_value.get_rect(center=level_rect.center))
 
-    if not game.game_over:
-        ghost = game.get_ghost_piece()
-        game.draw_ghost(screen, ghost, 11, 11)
-        
+    # Game over text
+    if game.game_over:
+        screen.blit(game_over_surface, (323, 430))
+
+    # ---------- DRAW GAME ----------
     game.draw(screen)
 
+    # ---------- DRAW HOLD PIECE ----------
+    draw_hold_piece(screen, game.hold_block, hold_rect)
+
+    # ---------- COUNTDOWN DIM OVERLAY ----------
+    if countdown:
+        dim_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        dim_surface.fill((0, 0, 0, 150))  # black with 150 alpha
+        screen.blit(dim_surface, (0, 0))
+
+        remaining = 3 - ((pygame.time.get_ticks() - start_time) // 1000)
+        if remaining > 0:
+            number = big_font.render(str(remaining), True, Colors.forText)
+            screen.blit(number, number.get_rect(center=(160, 310)))
+
     pygame.display.update()
-    clock.tick(60)
