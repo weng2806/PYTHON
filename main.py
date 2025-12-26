@@ -1,7 +1,7 @@
 """
 Author: Pamaran, Ruel Jr. P.
-Date Started: November 13, 2025
-Date Completed: December 25, 2025
+Date Completed: 11/13/2025
+Date Completed: 12/26/2025
 Description: Main file to run the Tetris game.
 """
 
