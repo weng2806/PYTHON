@@ -196,6 +196,47 @@ def drawNextPiece(screen, block, rect):  # draw the next piece inside the box
     screen.blit(surf, rect.topleft)  # blit temporary surface onto main screen at rect position
 
 
+# ------game over screen function ---------------------------------------------------------------------
+def handleGameOverScreen():
+    pygame.mixer.music.stop()        # stop bg music immediately
+
+    dimSurface = pygame.Surface((width, height), pygame.SRCALPHA) # dim overlay
+    dimSurface.fill((0, 0, 0, 150))
+    screen.blit(dimSurface, (0, 0))
+
+    font = pygame.font.SysFont("gabriola", 50)
+    text = font.render("GAME OVER", True, Colors.white)
+    screen.blit(text, text.get_rect(center=(250, 310)))
+
+    font = pygame.font.SysFont("gabriola", 30)
+    text = font.render("Press any key to restart.", True, Colors.white)
+    screen.blit(text, text.get_rect(center=(250, 360)))
+
+    exitButton = pygame.Rect(150, 400, 200, 45)
+    pygame.draw.rect(screen, Colors.gridColor, exitButton, 0, 10)
+
+    exitText = font.render("Exit to Main Menu", True, Colors.white)
+    screen.blit(exitText, exitText.get_rect(center=exitButton.center))
+
+    if not gameOverSoundPlayed:
+        game.gameOverSound.play()     # play game over sound once
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        if event.type == pygame.KEYDOWN:
+            return "restart"
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if exitButton.collidepoint(event.pos):
+                return "menu"
+
+    return None
+
+
+
 # ----------game start ----------------------------------------------------------------------------------------
 menuChoice = startMenu()                 # show the start menu and wait for player choice
 if menuChoice == "start":                # only continue if player pressed start
@@ -235,22 +276,7 @@ while True:
                 paused = not paused                          # toggle pause state
                 pygame.mixer.music.set_volume(0 if paused else 0.3)  # mute music when paused
 
-            # ----kapag nirestart after game over ----------------------------------------------------------------
-            if game.gameOver and not countdown:  # any key restarts after game over
-                pygame.mixer.music.stop()        # stop background music
-                game.gameOverSound.stop()        # stop game over sound
-
-                game.reset()                     # reset the game
-                gravityTimer = 0                 # reset gravity timer
-                startTime = pygame.time.get_ticks()  # restart countdown timer
-
-                gameOverSoundPlayed = False      # allow game over sound again
-                countdownSFXPlayed = False       # allow countdown sound again
-                countdownOver = False            # countdown not finished yet
-                paused = False                   # unpause on restart
-                continue                         # skip rest of this event
-
-            if countdown or paused:               # block controls during countdown or pause
+            if countdown or paused or game.gameOver:
                 continue
 
             # -------keyboard controls ----------------------------------------------------------------
@@ -340,23 +366,29 @@ while True:
 
     # ------kapag game over ---------------------------------------------------------------------------------
     if game.gameOver:
-        pygame.mixer.music.stop()        # stop bg music immediately
+        action = handleGameOverScreen()
 
-        dimSurface = pygame.Surface((width, height), pygame.SRCALPHA) # dim overlay
-        dimSurface.fill((0, 0, 0, 150))
-        screen.blit(dimSurface, (0, 0))
+        if action == "restart":
+            pygame.mixer.music.stop()
+            game.gameOverSound.stop()
 
-        font = pygame.font.SysFont("gabriola", 50)
-        text = font.render("GAME OVER", True, Colors.white)
-        screen.blit(text, text.get_rect(center=(250, 310)))
+            game.reset()
+            gravityTimer = 0
+            startTime = pygame.time.get_ticks()
 
-        font = pygame.font.SysFont("gabriola", 30)
-        text = font.render("Press any key to restart.", True, Colors.white)
-        screen.blit(text, text.get_rect(center=(250, 360)))
+            gameOverSoundPlayed = False
+            countdownSFXPlayed = False
+            countdownOver = False
+            paused = False
 
-        if not gameOverSoundPlayed:
-            game.gameOverSound.play()     # play game over sound once
-            gameOverSoundPlayed = True
+        elif action == "menu":
+            pygame.mixer.music.stop()
+            game.gameOverSound.stop()
+
+            game.reset()
+            gameOverSoundPlayed = False
+            menuChoice = startMenu()
+            startTime = pygame.time.get_ticks()
 
 
     # ------pause overlay ---------------------------------------------------------------------------------
