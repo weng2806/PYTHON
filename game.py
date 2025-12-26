@@ -26,15 +26,18 @@ class Game:                                              # main game class
         self.currentBlock = self.spawnBlock(self.getRandomBlock())  # active block
         self.nextBlock = self.getRandomBlock()            # next block preview
 
-        self.gameOver = False                             # game over flag
         self.score = 0                                   # player score
+        
+        pygame.mixer.music.load("Sounds/starboy.ogg")
+        pygame.mixer.music.set_volume(0.3)
 
         self.gameOverSound = pygame.mixer.Sound("Sounds/gameOver.ogg")  # load game over sound
         self.rotateSound = pygame.mixer.Sound("Sounds/rotate.ogg")  # rotate sound
         self.clearSound = pygame.mixer.Sound("Sounds/clear.ogg")    # line clear sound
         self.countdown = pygame.mixer.Sound("Sounds/countdown.ogg")   # countdown sound
 
-        
+        self.gameOverSoundPlayed = False
+        self.gameOver = False                             # game over flag
         self.musicPlaying = False                         # music state flag
         self.holdBlock = None                             # held block
         self.canHold = True                               # hold availability
