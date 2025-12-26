@@ -1,249 +1,397 @@
-""" BUGS ***
- IN GAME OVER, the last block (located at the uppermost) overwrites the previous block below it  
-pag sa dulo yung block, ayaw magrotate
-
-try add on effects ***
-    start menu, 
-    hold piece tryy ---> hindi pa okay
-    hold piece display
-    sound effects (rotate, line clear, level up, game over)
 """
+Author: Pamaran, Ruel Jr. P.
+Date Started: November 13, 2025
+Date Completed: December 25, 2025
+Description: Main file to run the Tetris game.
+"""
+
 import pygame, sys
 from game import Game
 from colors import Colors
 
-pygame.init()
+pygame.init()  
 
-# ------------------ WINDOW ------------------
-WIDTH, HEIGHT = 500, 620
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Tetris")
-clock = pygame.time.Clock()
+pygame.mixer.music.load("Sounds/starboy.ogg")
+pygame.mixer.music.set_volume(0.3)
 
-# ------------------ ASSETS ------------------
-icon = pygame.image.load("Assets/tetrisLogoo.png")
-pygame.display.set_icon(icon)
+# ---- window setup --------------------------------------------------------------------------------------------
+width, height = 500, 620  # window size
+screen = pygame.display.set_mode((width, height))  # create main screen
+pygame.display.set_caption("Monotris.")  # window title
+clock = pygame.time.Clock()  # clock for fps timing
 
-tetrisImage = pygame.image.load("Assets/tetrisLogoo.png")
-tetrisImage = pygame.transform.scale(tetrisImage, (180, 100))
 
-fullTetris = pygame.image.load("Assets/fullTetris.png")
-fullTetris = pygame.transform.scale(fullTetris, (520, 620))
 
-# ------------------ FONTS ------------------
-title_font = pygame.font.Font(None, 30)
-big_font = pygame.font.Font(None, 50)
-menu_font = pygame.font.Font(None, 40)
+# --- assets ----------------------------------------------------------------------------------------
+icon = pygame.image.load("Assets/tetrisLogoo.png")  # load icon
+pygame.display.set_icon(icon)  # set window icon
 
-# ------------------ UI ------------------
-score_surface = title_font.render("Score", True, Colors.forText)
-level_surface = title_font.render("Level", True, Colors.forText)
-next_surface = title_font.render("Next", True, Colors.forText)
-hold_surface = title_font.render("Hold", True, Colors.forText)
-game_over_surface = title_font.render("GAME OVER", True, Colors.forText)
+tetrisImage = pygame.image.load("Assets/tetrisLogoo.png")  # main tetris image
+tetrisImage = pygame.transform.scale(tetrisImage, (180, 100))  # resize it
 
-score_rect = pygame.Rect(395, 560, 100, 50)
-level_rect = pygame.Rect(320, 560, 50, 50)
-next_rect = pygame.Rect(320, 350, 170, 140)
-hold_rect = pygame.Rect(320, 150, 170, 140)
+fullTetris = pygame.image.load("Assets/fullTetris.png")  # background image
+fullTetris = pygame.transform.scale(fullTetris, (520, 620))  # resize bg
 
-# ------------------ GAME ------------------
-game = Game()
 
-# NES gravity table (milliseconds per cell)
-NES_SPEED = [
+
+# ---- fonts --------------------------------------------------------------------------------------------
+bigFont = pygame.font.SysFont("gabriola", 50)  # big font for countdown numbers
+menuFont = pygame.font.SysFont("gabriola", 40)  # menu font
+mainFont = pygame.font.SysFont("gabriola", 30)  # main font
+titleFont = pygame.font.SysFont(None, 30)  
+pauseFont = pygame.font.SysFont("gabriola", 20)  # pause hint font
+
+
+# ------user interface --------------------------------------------------------------------------------------
+scoreSurface = mainFont.render("Score", True, Colors.white)  # score label
+levelSurface = mainFont.render("Level", True, Colors.white)  # level label
+nextSurface = mainFont.render("Next", True, Colors.white)  # next piece label
+holdSurface = mainFont.render("Hold", True, Colors.white)  # hold label
+pauseSurface = pauseFont.render("Press P for Pause", True, Colors.white)  # pause hint
+
+scoreRect = pygame.Rect(395, 560, 100, 50)  # score box
+levelRect = pygame.Rect(320, 560, 50, 50)  # level box
+nextRect = pygame.Rect(320, 350, 170, 140)  # next piece box
+holdRect = pygame.Rect(320, 150, 170, 140)  # hold box
+
+
+
+# ------game class instance --------------------------------------------------------------------------------
+game = Game()  # create game instance
+
+
+# -----nes gravity speeds per level -----------------------------------------------------------------------
+nesSpeed = [  # gravity per level (ms per drop)
     800, 710, 630, 550, 470, 380, 300, 220, 130, 100,
     90, 80, 70, 60, 50, 50, 50, 50, 50, 50
 ]
 
-def get_gravity_delay():
-    return NES_SPEED[min(game.level, len(NES_SPEED)-1)]
+def getGravityDelay():  # returns delay based on current level
+    return nesSpeed[min(game.level, len(nesSpeed)-1)]  # clamp to max
 
-# ------------------ GRAVITY ------------------
-gravity_timer = 0
 
-# ------------------ INPUT COOLDOWNS ------------------
-move_delay = 120
-rotate_delay = 170
-hard_drop_delay = 200
 
-last_move_time = 0
-last_rotate_time = 0
-last_hard_drop_time = 0
+# ---- values for delay and movement ----------------------------------------------------------------
+moveDelay = 120  # move repeat cooldown
+rotateDelay = 100  # rotate repeat cooldown
+hardDropDelay = 200  # hard drop cooldown
 
-# ------------------ START COUNTDOWN ------------------
-COUNTDOWN_DURATION = 3000
-start_time = None  # will be set after pressing Start
+lastMoveTime = 0  # last move timestamp
+lastRotateTime = 0  # last rotate timestamp
+lastHardDropTime = 0  # last hard drop timestamp
 
-# ------------------ START MENU ------------------
-def start_menu():
-    start_button = pygame.Rect(50, 100, 180, 50)
-    exit_button = pygame.Rect(270, 100, 180, 50)
+
+
+# ------ timers --------------------------------------------------------------------------------------------
+countdownDuration = 3000  # countdown time 3 sec
+startTime = None  # when countdown started
+
+
+
+# -----pause --------------------------------------------------------------------------------------------
+paused = False  # start unpaused
+
+
+
+# -----menu function --------------------------------------------------------------------------------------
+def startMenu():  # menu function
+    startButton = pygame.Rect(50, 100, 180, 50)  # start button rect
+    exitButton = pygame.Rect(270, 100, 180, 50)  # exit button rect
 
     while True:
-        screen.fill(Colors.bgColor)
-        screen.blit(fullTetris, (-10,0))
+        screen.fill(Colors.bgColor)  # clear screen
+        screen.blit(fullTetris, (-10,0))  # draw bg
 
-        # Buttons
-        pygame.draw.rect(screen, Colors.gridColor, start_button)
-        pygame.draw.rect(screen, Colors.gridColor, exit_button)
+        pygame.draw.rect(screen, Colors.gridColor, startButton, 0, 10)  # start box
+        pygame.draw.rect(screen, Colors.gridColor, exitButton, 0, 10)  # exit box
 
-        start_text = menu_font.render("Start Game", True, Colors.forText)
-        exit_text = menu_font.render("Exit", True, Colors.forText)
+       
 
-        screen.blit(start_text, start_text.get_rect(center=start_button.center))
-        screen.blit(exit_text, exit_text.get_rect(center=exit_button.center))
+        startText = menuFont.render("Start Game", True, Colors.white)  # start text
+        exitText = menuFont.render("Exit", True, Colors.white)  # exit text
 
-        pygame.display.update()
+        startRect = startText.get_rect(center = startButton.center)
+        startRect.y -= -15  #  vertical adjust
+        startRect.x += 0  # horizontal adjust
+        screen.blit(startText, startRect)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        exitRect = exitText.get_rect(center = exitButton.center)
+        exitRect.y -= -15  #  vertical adjust
+        exitRect.x += 0  # horizontal adjust
+        screen.blit(exitText, exitRect)
+
+        pygame.display.update()  # update display
+
+        for event in pygame.event.get():  # event loop
+            if event.type == pygame.QUIT:  # quit
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if start_button.collidepoint(event.pos):
+            if event.type == pygame.MOUSEBUTTONDOWN:  # click events
+                if startButton.collidepoint(event.pos):  # start clicked
                     return "start"
-                if exit_button.collidepoint(event.pos):
+                if exitButton.collidepoint(event.pos):  # exit clicked
                     pygame.quit()
                     sys.exit()
 
-# ------------------ COUNTDOWN FUNCTION ------------------
-def countdown_active():
-    if start_time is None:
+
+
+# --------cooldown check function -----------------------------------------------------------------------
+def countdownActive():  # returns True if countdown active
+    if startTime is None:  # if not started
         return False
-    return pygame.time.get_ticks() - start_time < COUNTDOWN_DURATION
+    
+    return pygame.time.get_ticks() - startTime < countdownDuration  # compare time
 
-# ------------------ DRAW HOLD PIECE CENTERED ------------------
-def draw_hold_piece(screen, block, rect):
-    if block is None:
+
+
+# ----------hold piece centered drawing function ---------------------------------------------------------------
+def drawHoldPiece(screen, block, rect):  # draw hold piece in box
+    if block is None:  # skip if empty
         return
-    # create a small surface for the hold piece
-    hold_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-    hold_surf.fill((0,0,0,0))
-    # clone block for drawing
-    temp_block = block.clone()
-    # compute min/max of block cells
-    positions = temp_block.get_cell_positions()
-    min_col = min(c.column for c in positions)
-    max_col = max(c.column for c in positions)
-    min_row = min(c.row for c in positions)
-    max_row = max(c.row for c in positions)
-    block_width = (max_col - min_col +1) * temp_block.cell_size
-    block_height = (max_row - min_row +1) * temp_block.cell_size
-    # center offsets
-    offset_x = (rect.width - block_width)//2 - min_col * temp_block.cell_size
-    offset_y = (rect.height - block_height)//2 - min_row * temp_block.cell_size
-    temp_block.draw(hold_surf, offset_x, offset_y)
-    screen.blit(hold_surf, rect.topleft)
+    
+    holdSurf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)  # transparent surf
+    holdSurf.fill((0,0,0,0))  # clear surf
+    
+    tempBlock = block.clone()  # clone block
+    positions = tempBlock.getCellPositions()  # get block tiles
 
-# ------------------ MAIN LOOP ------------------
-menu_choice = start_menu()
-if menu_choice == "start":
-    start_time = pygame.time.get_ticks()  # begin countdown
+    minCol = min(tile.column for tile in positions)  # leftmost col
+    maxCol = max(tile.column for tile in positions)  # rightmost col
 
+    minRow = min(tile.row for tile in positions)  # top row
+    maxRow = max(tile.row for tile in positions)  # bottom row
+    
+    blockWidth = (maxCol - minCol + 1) * tempBlock.cellSize  # width in pixels
+    blockHeight = (maxRow - minRow + 1) * tempBlock.cellSize  # height in pixels
+    
+    offsetX = (rect.width - blockWidth) // 2 - minCol * tempBlock.cellSize  # center x
+    offsetY = (rect.height - blockHeight) // 2 - minRow * tempBlock.cellSize   # center y
+    tempBlock.draw(holdSurf, offsetX, offsetY)  # draw on temp surface
+    screen.blit(holdSurf, rect.topleft)  # draw to main screen
+
+
+
+# ----------next piece centered drawing function ---------------------------------------------------------------
+def drawNextPiece(screen, block, rect):  # draw the next piece inside the box
+    if block is None:  # if there's no block, do nothing
+        return
+    surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)  # create a transparent surface for drawing
+    surf.fill((0,0,0,0))  # fill surface with transparent pixels
+
+    tempBlock = block.clone()  # clone the block so dont modify original
+    positions = tempBlock.getCellPositions()  # get all cell positions of the block
+
+    minCol = min(tile.column for tile in positions)  # find leftmost column
+    maxCol = max(tile.column for tile in positions)  # find rightmost column
+
+    minRow = min(tile.row for tile in positions)  # find topmost row
+    maxRow = max(tile.row for tile in positions)  # find bottommost row
+    
+    blockWidth = (maxCol - minCol + 1) * tempBlock.cellSize  # calculate block width in pixels
+    blockHeight = (maxRow - minRow + 1) * tempBlock.cellSize  # calculate block height in pixels
+    
+    offsetX = (rect.width - blockWidth) // 2 - minCol * tempBlock.cellSize  # center block horizontally
+    offsetY = (rect.height - blockHeight) // 2 - minRow * tempBlock.cellSize  # center block vertically
+    tempBlock.draw(surf, offsetX, offsetY)  # draw block onto temporary surface
+    screen.blit(surf, rect.topleft)  # blit temporary surface onto main screen at rect position
+
+
+# ----------game start ----------------------------------------------------------------------------------------
+menuChoice = startMenu()                 # show the start menu and wait for player choice
+if menuChoice == "start":                # only continue if player pressed start
+    startTime = pygame.time.get_ticks()  # mark time for countdown start
+
+    # hard reset audio (bulletproof)
+    pygame.mixer.music.stop()            # make 100% sure bg music is not playing
+    game.gameOverSound.stop()            # stop game over sound just in case
+
+    game.reset()                         # fully reset game state (grid, blocks, score)
+    gravityTimer = 0                     # reset gravity timer so block doesn't fall instantly
+
+    gameOverSoundPlayed = False          # allow game over sound to play again
+    countdownSFXPlayed = False           # allow countdown sound to play again
+    countdownOver = False                # mark that countdown has not finished yet
+    paused = False                       # game starts unpaused
+
+
+# ----- loop --------------------------------------------------------------------------------------------
 while True:
-    dt = clock.tick(60)
-    gravity_timer += dt
-    now = pygame.time.get_ticks()
-    keys = pygame.key.get_pressed()
-    countdown = countdown_active()
+    mS = clock.tick(60)                  # lock game to 60 FPS and get elapsed ms
+    gravityTimer += mS                   # add elapsed time to gravity timer
+    now = pygame.time.get_ticks()        # current time for delays
+    keys = pygame.key.get_pressed()      # get held keys for long press
+    countdown = countdownActive()        # check if countdown is still running
 
-    # ---------- EVENTS ----------
+    # ----- event handling --------------------------------------------------------------------------------
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+        if event.type == pygame.QUIT:    # window close button
+            pygame.quit()                # shut down pygame
+            sys.exit()                   # exit the program completely
 
-        # ONLY ALLOW INPUT IF NOT COUNTDOWN
-        if event.type == pygame.KEYDOWN and not countdown:
+        if event.type == pygame.KEYDOWN: # check for key presses
 
-            if game.game_over:
-                game.reset()
-                gravity_timer = 0
-                start_time = pygame.time.get_ticks()
+            # ----pause toggle ------------------------------------------------------------------------------------
+            if event.key == pygame.K_p and not countdown:   # press P to pause (not during countdown)
+                paused = not paused                          # toggle pause state
+                pygame.mixer.music.set_volume(0 if paused else 0.3)  # mute music when paused
+
+            # ----kapag nirestart after game over ----------------------------------------------------------------
+            if game.gameOver and not countdown:  # any key restarts after game over
+                pygame.mixer.music.stop()        # stop background music
+                game.gameOverSound.stop()        # stop game over sound
+
+                game.reset()                     # reset the game
+                gravityTimer = 0                 # reset gravity timer
+                startTime = pygame.time.get_ticks()  # restart countdown timer
+
+                gameOverSoundPlayed = False      # allow game over sound again
+                countdownSFXPlayed = False       # allow countdown sound again
+                countdownOver = False            # countdown not finished yet
+                paused = False                   # unpause on restart
+                continue                         # skip rest of this event
+
+            if countdown or paused:               # block controls during countdown or pause
                 continue
 
-            if event.key in (pygame.K_LEFT, pygame.K_a):
-                game.move_left()
-                last_move_time = now
-            elif event.key in (pygame.K_RIGHT, pygame.K_d):
-                game.move_right()
-                last_move_time = now
-            elif event.key in (pygame.K_DOWN, pygame.K_s):
-                game.move_down()
-                game.update_score(0, 1)
-                last_move_time = now
-            elif event.key in (pygame.K_UP, pygame.K_w):
-                if now - last_rotate_time > rotate_delay:
+            # -------keyboard controls ----------------------------------------------------------------
+            if event.key in (pygame.K_LEFT, pygame.K_a):   # move left
+                game.moveLeft()
+                lastMoveTime = now                          # save time for long press delay
+
+            elif event.key in (pygame.K_RIGHT, pygame.K_d): # move right
+                game.moveRight()
+                lastMoveTime = now
+
+            elif event.key in (pygame.K_DOWN, pygame.K_s):  # soft drop
+                game.moveDown()
+                game.updateScore(0, 1)                      # reward soft drop
+                lastMoveTime = now
+
+            elif event.key in (pygame.K_UP, pygame.K_w):    # rotate
+                if now - lastRotateTime > rotateDelay:      # prevent fast rotation spam
                     game.rotate()
-                    last_rotate_time = now
-            elif event.key == pygame.K_SPACE:
-                if now - last_hard_drop_time > hard_drop_delay:
-                    rows, points = game.hard_drop()
-                    game.update_score(0, points)
-                    gravity_timer = 0
-                    last_hard_drop_time = now
-            elif event.key == pygame.K_LSHIFT or event.key == pygame.K_c:
+                    lastRotateTime = now
+
+            elif event.key == pygame.K_SPACE:               # hard drop
+                if now - lastHardDropTime > hardDropDelay:  # prevent spam
+                    rows, points = game.hardDrop()
+                    game.updateScore(0, points)             # add hard drop score
+                    gravityTimer = 0                         # reset gravity
+                    lastHardDropTime = now
+
+            elif event.key in (pygame.K_LSHIFT, pygame.K_c): # hold piece
                 game.hold()
 
-    # ---------- LONG PRESS ----------
-    if not countdown and not game.game_over:
-        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and now - last_move_time > move_delay:
-            game.move_left()
-            last_move_time = now
-        if (keys[pygame.K_RIGHT] or keys[pygame.K_d]) and now - last_move_time > move_delay:
-            game.move_right()
-            last_move_time = now
-        if (keys[pygame.K_DOWN] or keys[pygame.K_s]) and now - last_move_time > move_delay:
-            game.move_down()
-            game.update_score(0, 1)
-            last_move_time = now
+    # ---- long press movement -----------------------------------------------------------------------------
+    if not countdown and not game.gameOver and not paused:  # allow movement only when active
+        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and now - lastMoveTime > moveDelay:
+            game.moveLeft()
+            lastMoveTime = now
 
-    # ---------- GRAVITY ----------
-    if not countdown and not game.game_over and gravity_timer >= get_gravity_delay():
-        gravity_timer = 0
-        game.move_down()
+        if (keys[pygame.K_RIGHT] or keys[pygame.K_d]) and now - lastMoveTime > moveDelay:
+            game.moveRight()
+            lastMoveTime = now
 
-    # ---------- DRAW UI ----------
-    screen.fill(Colors.bgColor)
+        if (keys[pygame.K_DOWN] or keys[pygame.K_s]) and now - lastMoveTime > moveDelay:
+            game.moveDown()
+            game.updateScore(0, 1)
+            lastMoveTime = now
 
-    # Score & Level
-    score_value = title_font.render(str(game.score), True, Colors.forText)
-    level_value = title_font.render(str(game.level), True, Colors.forText)
+    # -----falling block gravity -----------------------------------------------------------------------------
+    if not countdown and not game.gameOver and not paused and gravityTimer >= getGravityDelay():
+        gravityTimer = 0                 # reset gravity timer
+        game.moveDown()                  # auto drop block
 
-    screen.blit(tetrisImage, (317, 10))
-    screen.blit(score_surface, (415, 535))
-    screen.blit(level_surface, (320, 535))
-    screen.blit(next_surface, (385, 320))
-    screen.blit(hold_surface, (385, 120))
 
-    pygame.draw.rect(screen, Colors.gridColor, score_rect, 0, 10)
-    pygame.draw.rect(screen, Colors.gridColor, level_rect, 0, 10)
-    pygame.draw.rect(screen, Colors.gridColor, next_rect, 0, 10)
-    pygame.draw.rect(screen, Colors.gridColor, hold_rect, 0, 10)
+    # ------- background music restart after countdown ------------------------------------------------
+    if not countdown and not countdownOver and not game.gameOver:
+        pygame.mixer.music.play(-1)      # loop background music forever
+        countdownOver = True             # make sure this only happens once
 
-    screen.blit(score_value, score_value.get_rect(center=score_rect.center))
-    screen.blit(level_value, level_value.get_rect(center=level_rect.center))
+    # ------drawing assets -----------------------------------------------------------------------------
+    screen.fill(Colors.bgColor)          # clear screen
+    scoreValue = titleFont.render(str(game.score), True, Colors.white)  # render score
+    levelValue = titleFont.render(str(game.level), True, Colors.white)  # render level
 
-    # Game over text
-    if game.game_over:
-        screen.blit(game_over_surface, (323, 430))
+    screen.blit(tetrisImage, (317, 10))  # draw logo
+    screen.blit(scoreSurface, (415, 535))# score label
+    screen.blit(levelSurface, (320, 535))# level label
+    screen.blit(nextSurface, (385, 320)) # next box label
+    screen.blit(holdSurface, (385, 120)) # hold box label
+    screen.blit(pauseSurface, (350, 500))# pause hint
 
-    # ---------- DRAW GAME ----------
-    game.draw(screen)
+    pygame.draw.rect(screen, Colors.gridColor, scoreRect, 0, 10) # score box
+    pygame.draw.rect(screen, Colors.gridColor, levelRect, 0, 10) # level box
+    pygame.draw.rect(screen, Colors.gridColor, nextRect, 0, 10)  # next box
+    pygame.draw.rect(screen, Colors.gridColor, holdRect, 0, 10)  # hold box
 
-    # ---------- DRAW HOLD PIECE ----------
-    draw_hold_piece(screen, game.hold_block, hold_rect)
+    screen.blit(scoreValue, scoreValue.get_rect(center=scoreRect.center)) # draw score
+    screen.blit(levelValue, levelValue.get_rect(center=levelRect.center)) # draw level
 
-    # ---------- COUNTDOWN DIM OVERLAY ----------
+    game.grid.draw(screen)               # draw the grid
+
+    if not game.gameOver:
+        ghost = game.getGhostPiece()     # get ghost piece position
+        game.drawGhost(screen, ghost, 11, 11)  # draw ghost piece
+        game.currentBlock.draw(screen, 11, 11) # draw current block
+
+    drawHoldPiece(screen, game.holdBlock, holdRect) # draw hold piece
+    drawNextPiece(screen, game.nextBlock, nextRect) # draw next piece
+
+    # ------kapag game over ---------------------------------------------------------------------------------
+    if game.gameOver:
+        pygame.mixer.music.stop()        # stop bg music immediately
+
+        dimSurface = pygame.Surface((width, height), pygame.SRCALPHA) # dim overlay
+        dimSurface.fill((0, 0, 0, 150))
+        screen.blit(dimSurface, (0, 0))
+
+        font = pygame.font.SysFont("gabriola", 50)
+        text = font.render("GAME OVER", True, Colors.white)
+        screen.blit(text, text.get_rect(center=(250, 310)))
+
+        font = pygame.font.SysFont("gabriola", 30)
+        text = font.render("Press any key to restart.", True, Colors.white)
+        screen.blit(text, text.get_rect(center=(250, 360)))
+
+        if not gameOverSoundPlayed:
+            game.gameOverSound.play()     # play game over sound once
+            gameOverSoundPlayed = True
+
+
+    # ------pause overlay ---------------------------------------------------------------------------------
+    if paused and not countdown and not game.gameOver:
+        dimSurface = pygame.Surface((width, height), pygame.SRCALPHA) # darken screen
+        dimSurface.fill((0, 0, 0, 160))
+        screen.blit(dimSurface, (0, 0))
+
+        pauseTitleFont = pygame.font.SysFont("gabriola", 52, bold=True)
+        pauseSubFont = pygame.font.SysFont("gabriola", 28)
+
+        titleText = pauseTitleFont.render("PAUSED", True, Colors.white)
+        hintText = pauseSubFont.render("Press P to resume", True, Colors.white)
+
+        screen.blit(titleText, titleText.get_rect(center=(250, 300)))
+        screen.blit(hintText, hintText.get_rect(center=(250, 340)))
+
+
+    # --------countdown overlay ---------------------------------------------------------------------------------   
     if countdown:
-        dim_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        dim_surface.fill((0, 0, 0, 150))  # black with 150 alpha
-        screen.blit(dim_surface, (0, 0))
+        pygame.mixer.music.stop()         # force stop bg music during countdown
+        countdownOver = False             # allow music to restart after countdown
 
-        remaining = 3 - ((pygame.time.get_ticks() - start_time) // 1000)
+        dimSurface = pygame.Surface((width, height), pygame.SRCALPHA) # dim screen
+        dimSurface.fill((0, 0, 0, 150))
+        screen.blit(dimSurface, (0, 0))
+
+        remaining = 3 - ((pygame.time.get_ticks() - startTime) // 1000) # seconds left
+
+        if not countdownSFXPlayed:
+            game.countdown.play()         # play countdown sound once
+            countdownSFXPlayed = True
+
         if remaining > 0:
-            number = big_font.render(str(remaining), True, Colors.forText)
-            screen.blit(number, number.get_rect(center=(160, 310)))
+            number = bigFont.render(str(remaining), True, Colors.white)
+            screen.blit(number, number.get_rect(center=(250, 310)))
 
-    pygame.display.update()
+    pygame.display.update()               # finally update the screen

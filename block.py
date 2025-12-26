@@ -1,68 +1,80 @@
-import pygame
-from colors import Colors
-from position import Position
+""" 
+Author: Pamaran, Ruel Jr. P.                     
+Date Started: November 13, 2025                  
+Date Completed: December 25, 2025                
+Description: Base class for Tetris blocks.      
+"""                                             
 
-class Block:
-	def __init__(self, id):
-		self.id = id
-		self.cells = {}
-		self.cell_size = 30
-		self.row_offset = 0
-		self.column_offset = 0
-		self.rotation_state = 0
-		self.colors = Colors.get_cell_colors()
+import pygame                                    
+from colors import Colors                       
+from position import Position                   
 
-	def move(self, rows, columns):
-		self.row_offset += rows
-		self.column_offset += columns
+class Block:                                    # main block class
+	def __init__(self, blockId):                 # runs when block is created
+		self.blockId = blockId                   # id of the block
+		self.cells = {}                          # stores block shapes
+		self.cellSize = 30                       # size of one square
+		self.rowOffset = 0                       # how far down the block is
+		self.columnOffset = 0                    # how far left or right the block is
+		self.rotationState = 0                   # current rotation index
+		self.colors = Colors.getCellColors()     # get all block colors
 
-	def get_cell_positions(self):
-		tiles = self.cells[self.rotation_state]
-		moved_tiles = []
-		for position in tiles:
-			position = Position(position.row + self.row_offset, position.column + self.column_offset)
-			moved_tiles.append(position)
-		return moved_tiles
+	def move(self, rows, columns):               # move the block
+		self.rowOffset += rows                  # move up or down
+		self.columnOffset += columns            # move left or right
 
-	def rotate(self):
-		self.rotation_state += 1
-		if self.rotation_state == len(self.cells):
-			self.rotation_state = 0
+	def getCellPositions(self):                  # get the block cells on the grid
+		tiles = self.cells[self.rotationState]  # get cells for current rotation
+		movedTiles = []                          # list for moved cells
+		for position in tiles:                   # loop through each cell
+			position = Position(                # make a new position
+				position.row + self.rowOffset,  # add row offset
+				position.column + self.columnOffset  # add column offset
+			)
+			movedTiles.append(position)         # save the new position
+		return movedTiles                        # send back all positions
 
-	def undo_rotation(self):
-		self.rotation_state -= 1
-		if self.rotation_state == -1:
-			self.rotation_state = len(self.cells) - 1
+	def rotate(self):                            # rotate the block forward
+		self.rotationState += 1                  # go to next rotation
+		if self.rotationState == len(self.cells):# if rotation goes too far
+			self.rotationState = 0               # reset rotation
 
-	def draw(self, screen, offset_x, offset_y):
-		tiles = self.get_cell_positions()
-		for tile in tiles:
-			tile_rect = pygame.Rect(offset_x + tile.column * self.cell_size, 
-				offset_y + tile.row * self.cell_size, self.cell_size -1, self.cell_size -1)
-			pygame.draw.rect(screen, self.colors[self.id], tile_rect)
+	def undoRotation(self):                      # rotate the block backward
+		self.rotationState -= 1                  # go back one rotation
+		if self.rotationState == -1:             # if it goes below zero
+			self.rotationState = len(self.cells) - 1  # wrap to last rotation
 
-	def clone (self):
-		copy = type(self)()   # Create a new instance of the same block class
-		copy.cells = self.cells
-		copy.cell_size = self.cell_size
-		copy.row_offset = self.row_offset
-		copy.column_offset = self.column_offset
-		copy.rotation_state = self.rotation_state
-		return copy
-	
-	def valid_move(self, delta_row, delta_column, grid):
-		for cell in self.get_cell_positions():
-			new_row = cell.row + delta_row
-			new_col = cell.column + delta_column
+	def draw(self, screen, offsetX, offsetY):    # draw the block on screen
+		tiles = self.getCellPositions()          # get where cells should be
+		for tile in tiles:                       # draw each cell
+			tileRect = pygame.Rect(              # create a rectangle
+				offsetX + tile.column * self.cellSize,  # x position
+				offsetY + tile.row * self.cellSize,     # y position
+				self.cellSize - 1,               # width with gap
+				self.cellSize - 1                # height with gap
+			)
+			pygame.draw.rect(                    # draw the rectangle
+				screen,                          # where to draw
+				self.colors[self.blockId],       # color of the block
+				tileRect                         # rectangle shape
+			)
 
-			if not grid.is_inside(new_row, new_col):
-				return False
-			if not grid.is_empty(new_row, new_col):
-				return False
-		return True
+	def clone(self):                             # make a copy of the block
+		copyBlock = type(self)()                 # create same block type
+		copyBlock.cells = self.cells             # copy block shapes
+		copyBlock.cellSize = self.cellSize       # copy cell size
+		copyBlock.rowOffset = self.rowOffset     # copy row offset
+		copyBlock.columnOffset = self.columnOffset  # copy column offset
+		copyBlock.rotationState = self.rotationState  # copy rotation
+		return copyBlock                         # return the copy
 
+	def validMove(self, deltaRow, deltaColumn, grid):  # check if move is allowed
+		for cell in self.getCellPositions():     # loop through block cells
+			newRow = cell.row + deltaRow          # new row after move
+			newCol = cell.column + deltaColumn    # new column after move
 
-
-
-   
-        	
+			if not grid.isInside(newRow, newCol): # outside the grid
+				return False                     # move is not allowed
+			if not grid.isEmpty(newRow, newCol): # hits another block
+				return False                     # move is not allowed
+		return True                              # move is safe

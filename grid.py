@@ -1,65 +1,82 @@
+"""
+Author: Pamaran, Ruel Jr. P.
+Date Started: November 13, 2025
+Date Completed: December 25, 2025
+Description: Grid management for Tetris.
+""" 
+
 import pygame
 from colors import Colors
 
-class Grid:
-    def __init__(self):
-        self.num_rows = 20
-        self.num_cols = 10
-        self.cell_size = 30
-        self.grid = [[0 for j in range(self.num_cols)] for i in range(self.num_rows)]
-        self.colors = Colors.get_cell_colors()
+class Grid:                                      # grid class for the board
+    def __init__(self):                          # runs when grid is created
+        self.numRows = 20                        # number of rows
+        self.numCols = 10                        # number of columns
+        self.cellSize = 30                       # size of each cell
+        self.grid = [                            # 2d list for the grid
+            [0 for j in range(self.numCols)]     # one row filled with zeros
+            for i in range(self.numRows)         # repeat for each row
+        ]
+        self.colors = Colors.getCellColors()     # get colors for cells
 
-    def print_grid(self):
-        for row in range(self.num_rows):
-            for column in range(self.num_cols):
-                print(self.grid[row][column], end = " ")
-            print()
+    def printGrid(self):                         # print grid to console
+        for row in range(self.numRows):          # loop through rows
+            for column in range(self.numCols):   # loop through columns
+                print(self.grid[row][column], end=" ")  # print cell value
+            print()                              # new line after row
 
-    def is_inside(self, row, column): 
-        if row >= 0 and row < self.num_rows and column >= 0 and column < self.num_cols:
+    def isInside(self, row, column):              # check if inside grid
+        if row >= 0 and row < self.numRows and column >= 0 and column < self.numCols:
+            return True                          # position is valid
+        return False                             # position is outside
+
+    def isEmpty(self, row, column):               # check if cell is empty
+        if self.grid[row][column] == 0:           # zero means empty
             return True
         return False
 
-    def is_empty(self, row, column):
-        if self.grid[row][column] == 0:
-            return True
-        return False
-
-    def is_row_full(self, row):
-        for column in range(self.num_cols):
-            if self.grid[row][column] == 0:
+    def isRowFull(self, row):                     # check if row is full
+        for column in range(self.numCols):        # loop through columns
+            if self.grid[row][column] == 0:       # found an empty cell
                 return False
-        return True
+        return True                               # no empty cells found
 
-    def clear_row(self, row):
-        for column in range(self.num_cols):
-            self.grid[row][column] = 0
+    def clearRow(self, row):                      # clear one row
+        for column in range(self.numCols):        # loop through columns
+            self.grid[row][column] = 0            # set cell to empty
 
-    def move_row_down(self, row, num_rows):
-        for column in range(self.num_cols):
-            self.grid[row+num_rows][column] = self.grid[row][column]
-            self.grid[row][column] = 0
+    def moveRowDown(self, row, numRows):          # move a row down
+        for column in range(self.numCols):        # loop through columns
+            self.grid[row + numRows][column] = self.grid[row][column]  # copy cell
+            self.grid[row][column] = 0            # clear original cell
 
-    def clear_full_rows(self):
-        completed = 0
-        # iterate bottom-to-top
-        for row in range(self.num_rows-1, -1, -1):
-            if self.is_row_full(row):
-                self.clear_row(row)
-                completed += 1
-            elif completed > 0:
-                self.move_row_down(row, completed)
-        return completed
+    def clearFullRows(self):                      # clear all full rows
+        completed = 0                             # counter for cleared rows
+        for row in range(self.numRows - 1, -1, -1):  # go bottom to top
+            if self.isRowFull(row):               # if row is full
+                self.clearRow(row)                # clear it
+                completed += 1                    # add to counter
+            elif completed > 0:                   # if rows were cleared below
+                self.moveRowDown(row, completed)  # move row down
+        return completed                          # return cleared count
 
-    def reset(self):
-        for row in range(self.num_rows):
-            for column in range(self.num_cols):
-                self.grid[row][column] = 0
+    def reset(self):                              # reset the whole grid
+        for row in range(self.numRows):           # loop through rows
+            for column in range(self.numCols):    # loop through columns
+                self.grid[row][column] = 0        # clear cell
 
-    def draw(self, screen):
-        for row in range(self.num_rows):
-            for column in range(self.num_cols):
-                cell_value = self.grid[row][column]
-                cell_rect = pygame.Rect(column*self.cell_size + 11, row*self.cell_size + 11,
-                self.cell_size -1, self.cell_size -1)
-                pygame.draw.rect(screen, self.colors[cell_value], cell_rect)
+    def draw(self, screen):                       # draw grid on screen
+        for row in range(self.numRows):           # loop through rows
+            for column in range(self.numCols):    # loop through columns
+                cellValue = self.grid[row][column]  # get cell value
+                cellRect = pygame.Rect(           # make cell rectangle
+                    column * self.cellSize + 11,  # x position
+                    row * self.cellSize + 11,     # y position
+                    self.cellSize - 1,            # width
+                    self.cellSize - 1             # height
+                )
+                pygame.draw.rect(                 # draw the cell
+                    screen,                       # where to draw
+                    self.colors[cellValue],       # color based on value
+                    cellRect                      # rectangle shape
+                )
