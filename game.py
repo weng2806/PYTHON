@@ -39,7 +39,7 @@ class Game:                                              # main game class
         self.holdBlock = None                             # held block
         self.canHold = True                               # hold availability
 
-        self.lockDelay = 120                              # delay before locking
+        self.lockDelay = 500                              # delay before locking
         self.lockTimer = 0                                # lock timer counter
 
     def spawnBlock(self, block):                          # spawns a block

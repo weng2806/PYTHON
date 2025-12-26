@@ -72,9 +72,9 @@ def getGravityDelay():  # returns delay based on current level
 
 
 # ---- values for delay and movement ----------------------------------------------------------------
-moveDelay = 120  # move repeat cooldown
-rotateDelay = 100  # rotate repeat cooldown
-hardDropDelay = 200  # hard drop cooldown
+moveDelay = 100  # move repeat cooldown
+rotateDelay = 80  # rotate repeat cooldown
+hardDropDelay = 150  # hard drop cooldown
 
 lastMoveTime = 0  # last move timestamp
 lastRotateTime = 0  # last rotate timestamp
