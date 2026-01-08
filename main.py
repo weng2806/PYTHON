@@ -205,7 +205,7 @@ def handleGameOverScreen():
     dimSurface.fill((0, 0, 0, 150))
     screen.blit(dimSurface, (0, 0))
 
-    font = pygame.font.SysFont("gabriola", 50)
+    font = pygame.font.SysFont("gabriola", 50, bold=True)
     text = font.render("GAME OVER", True, Colors.white)
     screen.blit(text, text.get_rect(center=(250, 310)))
 
