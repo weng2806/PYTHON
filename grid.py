@@ -1,7 +1,7 @@
 """
 Author: Pamaran, Ruel Jr. P.
-Date Completed: 11/13/2025
-Date Completed: 12/26/2025
+Date Completed: November 13, 2025
+Date Completed: January 4, 2026 
 Description: Grid management for Tetris.
 """ 
 

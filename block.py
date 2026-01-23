@@ -1,7 +1,7 @@
 """ 
 Author: Pamaran, Ruel Jr. P.                     
 Date Started: November 13, 2025                  
-Date Completed: December 25, 2025                
+Date Completed: January 4, 2026               
 Description: Base class for Tetris blocks.      
 """                                             
 

@@ -1,15 +1,13 @@
 """
 Author: Pamaran, Ruel Jr. P.
-Date Completed: 11/13/2025
-Date Completed: 12/26/2025
+Date Completed: November 13, 2025
+Date Completed: January 4, 2026 
 Description: Core game logic for Tetris.
 """ 
 
 import random, pygame
 from grid import Grid
-from colors import Colors
 from blocks import *
-
 
 class Game:                                              # main game class
     def __init__(self):                                
@@ -29,12 +27,14 @@ class Game:                                              # main game class
         self.score = 0                                   # player score
         
         pygame.mixer.music.load("Sounds/starboy.ogg")
-        pygame.mixer.music.set_volume(0.3)
+        pygame.mixer.music.set_volume(1)
 
         self.gameOverSound = pygame.mixer.Sound("Sounds/gameOver.ogg")  # load game over sound
         self.rotateSound = pygame.mixer.Sound("Sounds/rotate.ogg")  # rotate sound
         self.clearSound = pygame.mixer.Sound("Sounds/clear.ogg")    # line clear sound
         self.countdown = pygame.mixer.Sound("Sounds/countdown.ogg")   # countdown sound
+
+        self.clearSound.set_volume(3.0)
 
         self.gameOverSoundPlayed = False
         self.gameOver = False                             # game over flag
@@ -105,8 +105,8 @@ class Game:                                              # main game class
 
         for tile in tiles:                                # check game over
             if not self.grid.isInside(tile.row, tile.column) or \
-               not self.grid.isEmpty(tile.row, tile.column):
-                self.gameOver = True                      # trigger game over
+               not self.grid.isEmpty(tile.row, tile.column): # collision at top
+                self.gameOver = True                      # trigger  game over
                 return 0
 
         for tile in tiles:                                # write to grid
